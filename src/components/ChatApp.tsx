@@ -70,6 +70,7 @@ export default function ChatApp() {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushSettingsRef = useRef<(() => Promise<void>) | null>(null);
 
   const showError = useCallback((e: unknown) => {
     const err = e as Error & { status?: number };
@@ -92,6 +93,7 @@ export default function ChatApp() {
 
   const openChat = useCallback(
     async (id: string) => {
+      await flushSettingsRef.current?.();
       setLoadingChat(true);
       setError(null);
       setSidebarOpen(false);
@@ -154,15 +156,36 @@ export default function ChatApp() {
   }, [input]);
 
   // ---------- Settings (saved per chat) ----------
+  // Changes are merged into one pending patch, so moving both sliders quickly
+  // saves both values (not just the last one).
+  const pendingPatch = useRef<{ chatId: string; patch: Partial<ChatSettings> } | null>(null);
+
+  const flushSettings = useCallback(async () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    const pending = pendingPatch.current;
+    pendingPatch.current = null;
+    if (!pending) return;
+    try {
+      await api(`/api/chats/${pending.chatId}`, { method: "PATCH", body: JSON.stringify(pending.patch) });
+    } catch (e) {
+      showError(e);
+    }
+  }, [showError]);
+  flushSettingsRef.current = flushSettings;
+
   function updateSettings(patch: Partial<ChatSettings>, debounce = false) {
     setSettings((s) => ({ ...s, ...patch }));
     if (!activeChat) return;
     const id = activeChat.id;
-    const run = () =>
-      api(`/api/chats/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).catch(showError);
+    const prev = pendingPatch.current?.chatId === id ? pendingPatch.current.patch : {};
+    if (pendingPatch.current && pendingPatch.current.chatId !== id) flushSettings();
+    pendingPatch.current = { chatId: id, patch: { ...prev, ...patch } };
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    if (debounce) saveTimer.current = setTimeout(run, 400);
-    else run();
+    if (debounce) saveTimer.current = setTimeout(flushSettings, 400);
+    else flushSettings();
   }
 
   // ---------- Chat actions ----------
@@ -187,7 +210,7 @@ export default function ChatApp() {
   async function deleteChat(id: string) {
     if (confirmDeleteId !== id) {
       setConfirmDeleteId(id);
-      setTimeout(() => setConfirmDeleteId((c) => (c === id ? null : c)), 3000);
+      setTimeout(() => setConfirmDeleteId((c) => (c === id ? null : c)), 5000);
       return;
     }
     setConfirmDeleteId(null);
@@ -204,7 +227,7 @@ export default function ChatApp() {
     if (!activeChat || activeChat.messages.length === 0) return;
     if (!confirmClear) {
       setConfirmClear(true);
-      setTimeout(() => setConfirmClear(false), 3000);
+      setTimeout(() => setConfirmClear(false), 5000);
       return;
     }
     setConfirmClear(false);
@@ -230,6 +253,7 @@ export default function ChatApp() {
       return;
     }
     setError(null);
+    await flushSettings(); // make sure the answer uses the latest slider values
 
     let chat = activeChat;
     if (!chat) chat = await createChat();
@@ -383,8 +407,8 @@ export default function ChatApp() {
               </div>
             </div>
 
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-              <label className="relative flex-1 sm:flex-none">
+            <div className="grid w-full grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto_auto] items-center gap-2 sm:flex sm:w-auto">
+              <label className="relative min-w-0 sm:flex-none">
                 <span className="sr-only">LLM Model</span>
                 <select
                   value={settings.model}
@@ -398,7 +422,7 @@ export default function ChatApp() {
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
               </label>
-              <label className="relative flex-1 sm:flex-none">
+              <label className="relative min-w-0 sm:flex-none">
                 <span className="sr-only">System Prompt</span>
                 <select
                   value={settings.systemPromptId ?? ""}
@@ -417,10 +441,12 @@ export default function ChatApp() {
               </label>
               <button
                 onClick={() => setPromptsOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 shadow-sm hover:bg-stone-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white p-2 text-sm text-stone-700 shadow-sm hover:bg-stone-50 sm:px-3"
+                aria-label="Manage Prompts"
+                title="Manage Prompts"
               >
                 <Settings2 className="h-4 w-4" />
-                <span>Manage Prompts</span>
+                <span className="hidden sm:inline">Manage Prompts</span>
               </button>
               <button
                 onClick={() => setSettingsOpen((o) => !o)}

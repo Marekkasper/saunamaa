@@ -72,7 +72,7 @@ export default function PromptsModal({ open, prompts, onClose, onChanged }: Prop
   async function remove(id: string) {
     if (confirmDelete !== id) {
       setConfirmDelete(id);
-      setTimeout(() => setConfirmDelete((c) => (c === id ? null : c)), 3000);
+      setTimeout(() => setConfirmDelete((c) => (c === id ? null : c)), 5000);
       return;
     }
     setBusy(true);
