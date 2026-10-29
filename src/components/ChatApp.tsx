@@ -647,6 +647,9 @@ export default function ChatApp() {
                 {input.length > MAX_LEN * 0.8 ? `${input.length}/${MAX_LEN}` : ""}
               </span>
             </div>
+            <p className="mt-1 text-center text-[11px] text-stone-400">
+              © 2026 Saunamaa. Built with Claude Code
+            </p>
           </div>
         </footer>
       </main>
