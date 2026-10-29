@@ -42,15 +42,19 @@ export async function sendMessage(
     );
   } else if (matches.length === 0) {
     parts.push(
-      `Hmm, that one is outside my sauna wisdom. Try asking about: ${randomTopics(3)
+      `I don't have an answer to that one yet – my knowledge is all about saunas. You could ask me about: ${randomTopics(4)
         .map((t) => `*${t}*`)
         .join(", ")}.`
     );
   } else {
     const [best, second] = matches;
-    parts.push(`**${best.entry.topic}**\n\n${best.entry.answer}`);
+    if (best.fuzzy) {
+      parts.push(`I'm not completely sure what you mean, but this looks closest:\n\n**${best.entry.topic}**\n\n${best.entry.answer}`);
+    } else {
+      parts.push(`**${best.entry.topic}**\n\n${best.entry.answer}`);
+    }
     // Higher Top-P → "consider more candidates": add a related tip.
-    if (second && settings.topP >= 0.8) {
+    if (second && settings.topP >= 0.8 && second.score >= Math.min(2, best.score)) {
       parts.push(`**Related – ${second.entry.topic}:** ${second.entry.answer}`);
     }
   }
