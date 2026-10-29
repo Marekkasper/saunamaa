@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-stone-50 text-stone-900 antialiased;
+}
+
+/* Slim scrollbars for the chat and sidebar */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d6d3d1 transparent;
+}
+
+/* Range slider styling */
+input[type="range"].slider {
+  @apply h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200;
+}
+input[type="range"].slider::-webkit-slider-thumb {
+  @apply h-5 w-5 appearance-none rounded-full border-2 border-white bg-ember-600 shadow;
+}
+input[type="range"].slider::-moz-range-thumb {
+  @apply h-5 w-5 rounded-full border-2 border-white bg-ember-600 shadow;
+}

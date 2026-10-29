@@ -1,0 +1,27 @@
+# Render Blueprint: one web service + one PostgreSQL database.
+# Render builds and deploys automatically from the main branch on GitHub.
+databases:
+  - name: saunamaa-db
+    plan: free
+    region: frankfurt
+    databaseName: saunamaa
+    user: saunamaa
+
+services:
+  - type: web
+    name: saunamaa-leili
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saunamaa-db
+          property: connectionString
+      - key: NODE_VERSION
+        value: "22"
